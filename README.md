@@ -1,6 +1,6 @@
 # Solana Unity SDK
 
-A native Solana SDK for Unity that enables web3 functionality through a Rust-compiled DLL. This allows Unity games and applications to interact with the Solana blockchain in a performant and secure way.
+A native Solana SDK for Unity that enables web3 functionality through a Rust-compiled DLL. This allows Unity games and applications to interact with the Solana blockchain in a performant way.
 
 ## Features
 
