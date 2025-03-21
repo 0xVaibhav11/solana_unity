@@ -1,4 +1,3 @@
-use serde_json::Value;
 use solana_client::rpc_client::RpcClient as SolanaRpcClient;
 use solana_client::rpc_config::{RpcAccountInfoConfig, RpcSendTransactionConfig};
 use solana_sdk::commitment_config::CommitmentConfig;
@@ -179,7 +178,7 @@ impl RpcClient {
 mod tests {
     use super::*;
     use solana_sdk::pubkey::Pubkey;
-    use std::str::FromStr;
+    
 
     // For more comprehensive tests, we should use mockall
     // Let's create a set of tests that don't require network connectivity

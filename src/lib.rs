@@ -17,7 +17,7 @@ mod tests {
     use super::*;
     use solana_sdk::signature::Keypair;
     use solana_sdk::signer::Signer;
-    use std::str::FromStr;
+    
 
     const TEST_URL: &str = "https://api.devnet.solana.com";
 
@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn test_transaction_basics() {
-        let mut tx = Transaction::new();
+        let tx = Transaction::new();
         assert!(tx.serialize().is_err());
         assert!(tx.get_transaction().is_err());
     }

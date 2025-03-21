@@ -2,7 +2,6 @@ use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_uchar};
 use std::ptr;
 use std::slice;
-use std::sync::Arc;
 
 use crate::account::Account;
 use crate::error::{error_to_c_string, free_c_string, SolanaUnityError};

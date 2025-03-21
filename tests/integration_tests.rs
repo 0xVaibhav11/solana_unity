@@ -1,9 +1,7 @@
 use solana_sdk::{
     hash::Hash,
-    pubkey::Pubkey,
     signature::{Keypair, Signer},
 };
-use std::str::FromStr;
 
 // Note: These tests can't directly use solana_unity lib until it's published
 // as a crate. For now, we provide properly structured tests but mark them as ignored.
