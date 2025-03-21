@@ -174,3 +174,188 @@ impl RpcClient {
         Ok(json)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use solana_sdk::pubkey::Pubkey;
+    use std::str::FromStr;
+
+    // For more comprehensive tests, we should use mockall
+    // Let's create a set of tests that don't require network connectivity
+
+    #[test]
+    fn test_create_client() {
+        let url = "https://api.devnet.solana.com";
+
+        let client = RpcClient::new(url, "confirmed");
+        assert!(client.is_ok());
+
+        let client = client.unwrap();
+        assert_eq!(client.commitment, CommitmentConfig::confirmed());
+
+        let client = RpcClient::new(url, "processed");
+        assert!(client.is_ok());
+
+        let client = client.unwrap();
+        assert_eq!(client.commitment, CommitmentConfig::processed());
+
+        let client = RpcClient::new(url, "finalized");
+        assert!(client.is_ok());
+
+        let client = client.unwrap();
+        assert_eq!(client.commitment, CommitmentConfig::finalized());
+
+        // Test invalid commitment level falls back to default
+        let client = RpcClient::new(url, "invalid");
+        assert!(client.is_ok());
+    }
+
+    #[test]
+    fn test_invalid_pubkey() {
+        let url = "https://api.devnet.solana.com";
+        let client = RpcClient::new(url, "confirmed").unwrap();
+
+        // Test a variety of invalid pubkeys
+        let invalid_pubkeys = [
+            "",
+            "not-a-valid-pubkey",
+            "tooshort",
+            "TOOLONG_TOOLONG_TOOLONG_TOOLONG_TOOLONG_TOOLONG_TOOLONG_TOOLONG",
+        ];
+
+        for &invalid_pubkey in &invalid_pubkeys {
+            // Test get_balance
+            let result = client.get_balance(invalid_pubkey);
+            assert!(
+                result.is_err(),
+                "Expected error for invalid pubkey: {}",
+                invalid_pubkey
+            );
+
+            match result {
+                Err(SolanaUnityError::InvalidInput(_)) => {} // Expected
+                _ => panic!(
+                    "Expected InvalidInput error for pubkey in get_balance: {}",
+                    invalid_pubkey
+                ),
+            }
+
+            // Test get_account_data
+            let result = client.get_account_data(invalid_pubkey);
+            assert!(result.is_err());
+
+            match result {
+                Err(SolanaUnityError::InvalidInput(_)) => {} // Expected
+                _ => panic!("Expected InvalidInput error for pubkey in get_account_data"),
+            }
+
+            // Test get_token_account_balance
+            let result = client.get_token_account_balance(invalid_pubkey);
+            assert!(result.is_err());
+
+            match result {
+                Err(SolanaUnityError::InvalidInput(_)) => {} // Expected
+                _ => panic!("Expected InvalidInput error for pubkey in get_token_account_balance"),
+            }
+
+            // Test get_account_info
+            let result = client.get_account_info(invalid_pubkey);
+            assert!(result.is_err());
+
+            match result {
+                Err(SolanaUnityError::InvalidInput(_)) => {} // Expected
+                _ => panic!("Expected InvalidInput error for pubkey in get_account_info"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_invalid_signature() {
+        let url = "https://api.devnet.solana.com";
+        let client = RpcClient::new(url, "confirmed").unwrap();
+
+        // Test a variety of invalid signatures
+        let invalid_signatures = [
+            "",
+            "not-a-valid-signature",
+            "tooshort",
+            "TOOLONG_TOOLONG_TOOLONG_TOOLONG_TOOLONG_TOOLONG_TOOLONG_TOOLONG",
+        ];
+
+        for &invalid_sig in &invalid_signatures {
+            // Test confirm_transaction
+            let result = client.confirm_transaction(invalid_sig);
+            assert!(result.is_err());
+
+            match result {
+                Err(SolanaUnityError::InvalidInput(_)) => {} // Expected
+                _ => panic!("Expected InvalidInput error for signature in confirm_transaction"),
+            }
+
+            // Test get_transaction_status
+            let result = client.get_transaction_status(invalid_sig);
+            assert!(result.is_err());
+
+            match result {
+                Err(SolanaUnityError::InvalidInput(_)) => {} // Expected
+                _ => panic!("Expected InvalidInput error for signature in get_transaction_status"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_client_methods_validation() {
+        let url = "https://api.devnet.solana.com";
+        let client = RpcClient::new(url, "confirmed").unwrap();
+
+        // Valid pubkey for testing
+        let valid_pubkey = Pubkey::new_unique().to_string();
+
+        // We can't test the actual RPC calls without a mock, but we can test that the
+        // validation part of our methods work correctly
+
+        // For get_program_accounts
+        let result = client.get_program_accounts("not-a-valid-program-id");
+        assert!(result.is_err());
+
+        match result {
+            Err(SolanaUnityError::InvalidInput(_)) => {} // Expected
+            _ => panic!("Expected InvalidInput error for program ID"),
+        }
+    }
+
+    // The following tests would need a real connection or a mock
+    // They are included as a reference for how to structure real tests with network calls
+    #[ignore]
+    #[test]
+    fn test_get_balance_with_connection() {
+        let url = "https://api.devnet.solana.com";
+        let client = RpcClient::new(url, "confirmed").unwrap();
+
+        // Known account with balance - replace with a real Solana account if testing
+        let pubkey = "Ey9yot9JRj8RDjrTk1nxES1EA5Pig7PUMNhtC2xpxuPr";
+
+        let result = client.get_balance(pubkey);
+        assert!(result.is_ok());
+
+        let balance = result.unwrap();
+        assert!(balance >= 0); // Balance should be non-negative
+    }
+
+    #[ignore]
+    #[test]
+    fn test_get_latest_blockhash_with_connection() {
+        let url = "https://api.devnet.solana.com";
+        let client = RpcClient::new(url, "confirmed").unwrap();
+
+        let result = client.get_latest_blockhash();
+        assert!(result.is_ok());
+
+        let blockhash = result.unwrap();
+        assert!(!blockhash.is_empty());
+
+        // Blockhash should be 32 bytes encoded as base58, typically around 44 chars
+        assert!(blockhash.len() >= 32);
+    }
+}

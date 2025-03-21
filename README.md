@@ -23,6 +23,38 @@ A native Solana SDK for Unity that enables web3 functionality through a Rust-com
   - macOS: Xcode command line tools
   - Linux: gcc/clang and required development libraries
 
+## Project Structure
+
+```
+solana_unity/
+├── .cargo/               # Cargo configuration
+├── .git/                 # Git repository
+├── src/                  # Rust source code
+│   ├── account.rs        # Account management
+│   ├── error.rs          # Error handling
+│   ├── ffi.rs            # Foreign Function Interface
+│   ├── lib.rs            # Library entry point
+│   ├── rpc.rs            # RPC client implementation
+│   └── transaction.rs    # Transaction building
+├── tests/                # Rust integration tests
+│   └── integration_tests.rs
+├── Unity/                # Unity integration
+│   └── SolanaUnity/      # Unity package
+│       ├── Runtime/      # Runtime scripts
+│       │   ├── SolanaUnity.cs
+│       │   └── SolanaExample.cs
+│       └── Tests/        # Unit tests
+│           ├── Editor/   # Editor tests
+│           │   ├── SolanaClientTests.cs
+│           │   ├── SolanaAccountTests.cs
+│           │   └── SolanaTransactionTests.cs
+│           └── Runtime/  # Runtime tests
+│               └── SolanaUnityIntegrationTests.cs
+├── target/               # Rust build output
+├── Cargo.toml            # Rust dependencies
+└── Cargo.lock            # Rust lock file
+```
+
 ## Building the Library
 
 ### Building Rust Library
@@ -179,3 +211,33 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Testing
+
+### Rust Tests
+
+Run unit tests:
+
+```bash
+cargo test
+```
+
+Run integration tests:
+
+```bash
+cargo test --test integration_tests
+```
+
+### Unity Tests
+
+1. Import the Unity package into your Unity project
+2. Open the Test Runner window in Unity (Window > General > Test Runner)
+3. Run Editor tests to verify C# binding functionality
+4. Run PlayMode tests to verify runtime integration
+
+## Dependencies
+
+- Rust dependencies are listed in `Cargo.toml`
+- Unity dependencies:
+  - Unity 2021.3 or newer
+  - NUnit (for testing)
