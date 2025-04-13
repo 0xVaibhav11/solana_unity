@@ -4040,9 +4040,9 @@ name = "solana_unity"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "borsh 0.10.4",
  "libc",
  "mockall",
+ "rand 0.8.5",
  "serde",
  "serde_json",
  "solana-account-decoder",
@@ -4051,7 +4051,6 @@ dependencies = [
  "solana-transaction-status",
  "thiserror",
  "tiny-bip39",
- "tokio",
 ]
 
 [[package]]

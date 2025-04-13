@@ -1,0 +1,647 @@
+{
+  "address": "NPCaMhiQD8oAbQYypLEe8rk7Y1QMVQzjThCbcw6c4Xo",
+  "metadata": {
+    "name": "trader_contract",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "add_item",
+      "discriminator": [
+        225,
+        38,
+        79,
+        147,
+        116,
+        142,
+        147,
+        57
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "npc"
+          ]
+        },
+        {
+          "name": "npc",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  112,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "npc.game_instance_id",
+                "account": "Npc"
+              }
+            ]
+          }
+        },
+        {
+          "name": "item",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  116,
+                  101,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "npc"
+              },
+              {
+                "kind": "arg",
+                "path": "item_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "item_id",
+          "type": "u64"
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        },
+        {
+          "name": "quantity",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "buy_item",
+      "discriminator": [
+        80,
+        82,
+        193,
+        201,
+        216,
+        27,
+        70,
+        184
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "npc",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  112,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "npc.game_instance_id",
+                "account": "Npc"
+              }
+            ]
+          }
+        },
+        {
+          "name": "item",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  116,
+                  101,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "npc"
+              },
+              {
+                "kind": "arg",
+                "path": "item_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "item_id",
+          "type": "u64"
+        },
+        {
+          "name": "quantity",
+          "type": "u64"
+        },
+        {
+          "name": "max_price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_npc",
+      "discriminator": [
+        241,
+        143,
+        255,
+        136,
+        60,
+        14,
+        143,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "npc",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  112,
+                  99
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_instance_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_instance_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "sell_item",
+      "discriminator": [
+        44,
+        114,
+        171,
+        76,
+        76,
+        10,
+        150,
+        246
+      ],
+      "accounts": [
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "npc",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  112,
+                  99
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "npc.game_instance_id",
+                "account": "Npc"
+              }
+            ]
+          }
+        },
+        {
+          "name": "item",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  116,
+                  101,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "npc"
+              },
+              {
+                "kind": "arg",
+                "path": "item_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "item_id",
+          "type": "u64"
+        },
+        {
+          "name": "quantity",
+          "type": "u64"
+        },
+        {
+          "name": "min_price",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Item",
+      "discriminator": [
+        92,
+        157,
+        163,
+        130,
+        72,
+        254,
+        86,
+        216
+      ]
+    },
+    {
+      "name": "Npc",
+      "discriminator": [
+        68,
+        83,
+        157,
+        72,
+        230,
+        229,
+        125,
+        134
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "ItemAdded",
+      "discriminator": [
+        237,
+        187,
+        145,
+        238,
+        43,
+        33,
+        4,
+        170
+      ]
+    },
+    {
+      "name": "ItemBought",
+      "discriminator": [
+        164,
+        239,
+        51,
+        167,
+        116,
+        135,
+        31,
+        189
+      ]
+    },
+    {
+      "name": "ItemSold",
+      "discriminator": [
+        212,
+        37,
+        218,
+        206,
+        120,
+        171,
+        56,
+        230
+      ]
+    },
+    {
+      "name": "NpcInitialized",
+      "discriminator": [
+        115,
+        247,
+        203,
+        79,
+        21,
+        84,
+        153,
+        6
+      ]
+    },
+    {
+      "name": "ValidationError",
+      "discriminator": [
+        136,
+        188,
+        181,
+        68,
+        98,
+        135,
+        233,
+        171
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InsufficientQuantity",
+      "msg": "Insufficient quantity available"
+    },
+    {
+      "code": 6001,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6002,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidPrice",
+      "msg": "Invalid price"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidQuantity",
+      "msg": "Invalid quantity"
+    },
+    {
+      "code": 6005,
+      "name": "NotInitialized",
+      "msg": "Account not initialized"
+    },
+    {
+      "code": 6006,
+      "name": "PriceExceedsMaximum",
+      "msg": "Price exceeds maximum"
+    },
+    {
+      "code": 6007,
+      "name": "PriceBelowMinimum",
+      "msg": "Price below minimum"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidProgram",
+      "msg": "Invalid program ID"
+    }
+  ],
+  "types": [
+    {
+      "name": "Item",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "item_id",
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          },
+          {
+            "name": "npc",
+            "type": "pubkey"
+          },
+          {
+            "name": "is_initialized",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemAdded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_instance_id",
+            "type": "u64"
+          },
+          {
+            "name": "item_id",
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          },
+          {
+            "name": "npc",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemBought",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_instance_id",
+            "type": "u64"
+          },
+          {
+            "name": "item_id",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          },
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_price",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemSold",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_instance_id",
+            "type": "u64"
+          },
+          {
+            "name": "item_id",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          },
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_price",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Npc",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_instance_id",
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "is_initialized",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NpcInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_instance_id",
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ValidationError",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "error_code",
+            "type": "u32"
+          },
+          {
+            "name": "message",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}

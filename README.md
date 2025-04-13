@@ -1,243 +1,278 @@
 # Solana Unity SDK
 
-A native Solana SDK for Unity that enables web3 functionality through a Rust-compiled DLL. This allows Unity games and applications to interact with the Solana blockchain in a performant way.
+A comprehensive SDK for interacting with the Solana blockchain from Unity applications. This SDK provides a complete set of tools for building Solana-powered games and applications.
 
 ## Features
 
-- Connect to Solana RPC endpoints
-- Create and manage wallet accounts
-- Generate or import keypairs
-- Query account balances and data
-- Send SOL and SPL token transfers
-- Build and sign transactions
-- Interact with smart contracts/programs
-- Support for BIP39 mnemonic phrases (optional)
+- **Account Management**: Create, import, and manage Solana accounts
+- **Transaction Building**: Create and manage SOL transfers and more complex transactions
+- **Token Operations**: Full SPL Token support for transfers, minting, burning, and approvals
+- **Program Derived Addresses (PDAs)**: Generate PDAs and find associated token accounts
+- **Instruction Building**: Create custom instructions and compose complex transactions
+- **Transaction Simulation**: Test transactions without committing them to the blockchain
+- **Multi-signature Support**: Build and sign transactions with multiple signers
+- **RPC Client**: Comprehensive RPC methods for interacting with Solana nodes
 
-## Prerequisites
+## Installation
 
-- Rust toolchain (rustc, cargo)
-- .NET/Mono development tools
-- Unity 2019.4 or newer
-- For cross-platform builds:
-  - Windows: Visual Studio with C++ support
-  - macOS: Xcode command line tools
-  - Linux: gcc/clang and required development libraries
+1. Import the SDK package into your Unity project
+2. Add the necessary DLLs to your project's Plugins folder
+3. Import the namespace in your scripts: `using SolanaUnity;`
 
-## Project Structure
+## Basic Usage
 
-```
-solana_unity/
-├── .cargo/               # Cargo configuration
-├── .git/                 # Git repository
-├── src/                  # Rust source code
-│   ├── account.rs        # Account management
-│   ├── error.rs          # Error handling
-│   ├── ffi.rs            # Foreign Function Interface
-│   ├── lib.rs            # Library entry point
-│   ├── rpc.rs            # RPC client implementation
-│   └── transaction.rs    # Transaction building
-├── tests/                # Rust integration tests
-│   └── integration_tests.rs
-├── Unity/                # Unity integration
-│   └── SolanaUnity/      # Unity package
-│       ├── Runtime/      # Runtime scripts
-│       │   ├── SolanaUnity.cs
-│       │   └── SolanaExample.cs
-│       └── Tests/        # Unit tests
-│           ├── Editor/   # Editor tests
-│           │   ├── SolanaClientTests.cs
-│           │   ├── SolanaAccountTests.cs
-│           │   └── SolanaTransactionTests.cs
-│           └── Runtime/  # Runtime tests
-│               └── SolanaUnityIntegrationTests.cs
-├── target/               # Rust build output
-├── Cargo.toml            # Rust dependencies
-└── Cargo.lock            # Rust lock file
-```
-
-## Building the Library
-
-### Building Rust Library
-
-1. Clone this repository
-2. Build the Rust library:
-
-```bash
-cargo build --release
-```
-
-This will produce a dynamic library file:
-
-- Windows: `target/release/solana_unity.dll`
-- macOS: `target/release/libsolana_unity.dylib`
-- Linux: `target/release/libsolana_unity.so`
-
-To build with BIP39 support:
-
-```bash
-cargo build --release --features bip39
-```
-
-### Unity Integration
-
-1. Copy the built DLL/dylib/so file to your Unity project's `Assets/Plugins` directory:
-
-   - Windows: `Assets/Plugins/x86_64/solana_unity.dll`
-   - macOS: `Assets/Plugins/x86_64/libsolana_unity.dylib` (rename to `solana_unity.bundle` for Unity)
-   - Linux: `Assets/Plugins/x86_64/libsolana_unity.so`
-
-2. Add the `SolanaUnity.cs` wrapper file to your Unity project.
-
-3. (Optional) If you need BIP39 support, define the `UNITY_SOLANA_BIP39` symbol in your project settings or add it as a compiler directive.
-
-## Usage
-
-### Basic Setup
+### Creating an RPC Client
 
 ```csharp
-using SolanaUnity;
+// Initialize a client with a connection to a Solana RPC node
+SolanaClient client = new SolanaClient("https://api.devnet.solana.com", "confirmed");
 
-// Create a client and connect to Solana
-SolanaClient solanaClient = new SolanaClient("https://api.mainnet-beta.solana.com", "confirmed");
+// Always dispose the client when you're done
+client.Dispose();
+```
 
+### Creating Accounts
+
+```csharp
 // Generate a new account
-SolanaClient.Account account = new SolanaClient.Account();
-string publicKey = account.GetPublicKey();
-
-// Get account balance
-ulong balance = solanaClient.GetBalance(publicKey);
-Debug.Log($"Balance: {balance / 1_000_000_000.0f} SOL");
-```
-
-### Sending SOL
-
-```csharp
-// Create transaction
-using (var transaction = new SolanaClient.Transaction(solanaClient))
+using (var account = new SolanaClient.Account())
 {
-    // Get recent blockhash
-    string blockhash = solanaClient.GetLatestBlockhash();
+    string publicKey = account.GetPublicKey();
+    // Use the account...
+}
 
-    // Build transfer
-    transaction.BuildTransfer(
-        fromPublicKey,    // Sender
-        toPublicKey,      // Recipient
-        1_000_000_000,    // Amount in lamports (1 SOL)
-        blockhash         // Recent blockhash
-    );
+// Create from an existing public key (read-only)
+using (var account = new SolanaClient.Account("PUBLIC_KEY_HERE"))
+{
+    // Use the account...
+}
 
-    // Sign transaction
-    transaction.Sign(privateKeyBytes);
-
-    // Send and get signature
-    string signature = transaction.Send();
-
-    // Check confirmation
-    bool confirmed = solanaClient.ConfirmTransaction(signature);
+// Create from a private key
+using (var account = new SolanaClient.Account(privateKeyBytes))
+{
+    // Use the account...
 }
 ```
 
-### Working with SPL Tokens
+### Basic Transfers
 
 ```csharp
-// Get token account balance
-ulong tokenBalance = solanaClient.GetTokenAccountBalance(tokenAccountAddress);
+// Get a recent blockhash
+string blockhash = client.GetLatestBlockhash();
 
-// Send tokens
-using (var transaction = new SolanaClient.Transaction(solanaClient))
+// Create and send a transaction
+using (var transaction = new SolanaClient.Transaction(client))
 {
-    string blockhash = solanaClient.GetLatestBlockhash();
+    // Build a transfer transaction (lamports = SOL × 10⁹)
+    transaction.BuildTransfer(fromPubkey, toPubkey, 1000000000, blockhash); // 1 SOL
 
-    // Transfer tokens
-    transaction.BuildTokenTransfer(
-        "",                  // Token program ID (empty for default)
-        sourceTokenAccount,  // Source token account
-        destinationAccount,  // Destination token account
-        ownerPublicKey,      // Token account owner
-        1000,                // Amount (token units)
-        blockhash            // Recent blockhash
-    );
+    // Sign the transaction
+    transaction.Sign(privateKeyBytes);
 
+    // Send the transaction
+    string signature = transaction.Send();
+
+    // Check if the transaction is confirmed
+    bool confirmed = client.ConfirmTransaction(signature);
+}
+```
+
+### Working with PDAs
+
+```csharp
+// Find a program derived address
+string programId = "11111111111111111111111111111111"; // Example program ID
+string[] seeds = new string[] { "metadata", "pubkey" };
+
+(string pda, byte bump) = client.FindProgramAddress(seeds, programId);
+
+// Find an associated token account
+string walletAddress = "...";
+string tokenMint = "...";
+string associatedTokenAccount = client.FindAssociatedTokenAddress(walletAddress, tokenMint);
+```
+
+### Token Operations
+
+```csharp
+// Get token balance
+ulong balance = client.GetTokenAccountBalance(tokenAccountAddress);
+
+// Create a token transfer instruction
+Instruction transferInstruction = Instruction.CreateTokenTransfer(
+    sourceAccount,
+    destinationAccount,
+    ownerAddress,
+    amount
+);
+
+// More token instructions
+Instruction approveInstruction = InstructionFactory.CreateTokenApprove(
+    tokenAccount,
+    delegateAddress,
+    ownerAddress,
+    amount
+);
+
+Instruction revokeInstruction = InstructionFactory.CreateTokenRevoke(
+    tokenAccount,
+    ownerAddress
+);
+
+Instruction mintToInstruction = InstructionFactory.CreateTokenMintTo(
+    mintAddress,
+    destinationAccount,
+    mintAuthorityAddress,
+    amount
+);
+
+Instruction burnInstruction = InstructionFactory.CreateTokenBurn(
+    tokenAccount,
+    mintAddress,
+    ownerAddress,
+    amount
+);
+```
+
+### Building Transactions with Multiple Instructions
+
+```csharp
+// Create several instructions
+Instruction instruction1 = ...;
+Instruction instruction2 = ...;
+
+// Build a transaction with multiple instructions
+using (var transaction = new SolanaClient.Transaction(client))
+{
+    // Combine instructions in one transaction
+    Instruction[] instructions = new Instruction[] { instruction1, instruction2 };
+
+    transaction.BuildWithInstructions(instructions, feePayer, blockhash);
+
+    // Sign and send as usual
     transaction.Sign(privateKeyBytes);
     string signature = transaction.Send();
 }
 ```
 
-### Smart Contract Interaction
-
-To interact with a custom program:
+### Custom Instructions
 
 ```csharp
-using (var transaction = new SolanaClient.Transaction(solanaClient))
+// Create a list of accounts for a custom instruction
+List<AccountMeta> accounts = new List<AccountMeta>
 {
-    string blockhash = solanaClient.GetLatestBlockhash();
+    AccountMeta.Writable(account1, true),   // Writable and signer
+    AccountMeta.ReadOnly(account2, false)   // Read-only and not signer
+};
 
-    // Get program accounts
-    string programAccountsJson = solanaClient.GetProgramAccounts(programId);
+// Create instruction data
+byte[] data = new byte[] { 0, 1, 2, 3 };  // Custom data format depends on the program
 
-    // Prepare account metadata - (pubkey, is_signer, is_writable)
-    var accounts = new (string, bool, bool)[]
+// Create a custom instruction
+Instruction customInstruction = InstructionFactory.CreateCustomInstruction(
+    programId,
+    accounts,
+    data
+);
+```
+
+### Transaction Simulation
+
+```csharp
+// Build a transaction as normal
+using (var transaction = new SolanaClient.Transaction(client))
+{
+    transaction.BuildTransfer(fromPubkey, toPubkey, lamports, blockhash);
+
+    // Simulate the transaction without sending it
+    string simulationResult = transaction.Simulate();
+
+    // Check the simulation result before actually sending
+    if (simulationResult.Contains("\"err\":null"))
     {
-        (accountA, false, true),  // Account A (writable)
-        (accountB, false, false), // Account B (read-only)
-        (payerAccount, true, true) // Payer (signer, writable)
-    };
-
-    // Prepare instruction data
-    byte[] data = new byte[] { 1, 2, 3, 4 }; // Your instruction data
-
-    // Build program call
-    // This would typically be done with a helper method in your codebase
-    // that wraps the programId, accounts, and data specific to your program
-
-    // Sign and send...
+        // Simulation succeeded, now sign and send
+        transaction.Sign(privateKeyBytes);
+        string signature = transaction.Send();
+    }
 }
 ```
 
-## Security Considerations
+### Multi-signature Transactions
 
-- **Private Keys**: Never expose private keys in your application. For production apps, use secure key storage mechanisms or allow users to sign via wallet adapters/extensions.
-- **Error Handling**: Always wrap your Solana interactions in try-catch blocks to gracefully handle network issues.
-- **RPC Endpoints**: For production use, consider using dedicated RPC endpoints rather than public ones to avoid rate limiting.
+```csharp
+// Create a transaction requiring multiple signatures
+using (var transaction = new SolanaClient.Transaction(client))
+{
+    // Build the transaction...
 
-## Example Project
+    // Sign with multiple keypairs
+    byte[][] privateKeys = new byte[][] { privateKey1, privateKey2, privateKey3 };
+    transaction.SignWithKeypairs(privateKeys);
 
-See the `SolanaExample.cs` file for a complete example of how to use the SDK in a Unity MonoBehaviour.
+    // Send the transaction
+    string signature = transaction.Send();
+}
+```
+
+## Advanced Features
+
+### Program Accounts Query
+
+```csharp
+// Get all accounts owned by a program
+string programId = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"; // SPL Token program
+string accountsJson = client.GetProgramAccounts(programId);
+
+// Process the JSON result...
+```
+
+### Account Information
+
+```csharp
+// Get account data
+string accountInfo = client.GetAccountInfo(address);
+
+// Process the JSON result...
+```
+
+## Error Handling
+
+All methods in the SDK can throw a `SolanaException` if anything goes wrong. Make sure to wrap your calls in try-catch blocks:
+
+```csharp
+try
+{
+    // Solana operations...
+}
+catch (SolanaException e)
+{
+    Debug.LogError($"Solana operation failed: {e.Message}");
+}
+finally
+{
+    // Clean up resources
+    client.Dispose();
+}
+```
+
+## Memory Management
+
+The SDK uses native resources that must be properly disposed:
+
+- Always dispose `SolanaClient` instances
+- Use `using` statements with `Account` and `Transaction` objects
+- The SDK handles cleanup for other resources like instruction data
+
+## Thread Safety
+
+The SDK is not thread-safe. Do not use the same client, account, or transaction objects across multiple threads simultaneously.
+
+## Performance Considerations
+
+- For high-performance applications, reuse the same `SolanaClient` instance
+- Consider batching operations for better performance
+- Use transaction simulation to validate transactions before sending them
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Testing
-
-### Rust Tests
-
-Run unit tests:
-
-```bash
-cargo test
-```
-
-Run integration tests:
-
-```bash
-cargo test --test integration_tests
-```
-
-### Unity Tests
-
-1. Import the Unity package into your Unity project
-2. Open the Test Runner window in Unity (Window > General > Test Runner)
-3. Run Editor tests to verify C# binding functionality
-4. Run PlayMode tests to verify runtime integration
-
-## Dependencies
-
-- Rust dependencies are listed in `Cargo.toml`
-- Unity dependencies:
-  - Unity 2021.3 or newer
-  - NUnit (for testing)
+This SDK is distributed under the MIT license.

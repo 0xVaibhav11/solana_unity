@@ -2,29 +2,32 @@
 name = "solana_unity"
 version = "0.1.0"
 edition = "2021"
+authors = ["SEND SDK Team"]
+description = "Solana Unity SDK for bridging Solana and Unity"
+repository = "https://github.com/send_sdk/solana_unity"
+license = "MIT"
 
 [lib]
 name = "solana_unity"
-crate-type = ["cdylib"]  # Builds a C-compatible DLL
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-solana-client = "1.16"
-solana-sdk = "1.16"
-solana-transaction-status = "1.16"
-solana-account-decoder = "1.16"
-tokio = { version = "1.0", features = ["full"] }
-borsh = "0.10"
+solana-sdk = "1.17.7"
+solana-client = "1.17.7"
+solana-account-decoder = "1.17.7"
+solana-transaction-status = "1.17.7"
+rand = "0.8.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+bincode = "1.3.3"
 libc = "0.2"
-thiserror = "1.0"
-bincode = "1.3"
-# Use an exact version of tiny-bip39 that works with zeroize < 1.4
 tiny-bip39 = { version = "0.8.2", optional = true }
+thiserror = "1.0"
 
 [dev-dependencies]
-mockall = "0.11.3"
+mockall = "0.11.4"
 
 [features]
 default = []
-bip39 = ["tiny-bip39"]
+bip39 = ["dep:tiny-bip39"]

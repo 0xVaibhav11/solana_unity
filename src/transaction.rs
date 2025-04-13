@@ -8,7 +8,6 @@ use std::str::FromStr;
 
 use crate::error::SolanaUnityError;
 
-// Add SPL token program ID
 const TOKEN_PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
 pub struct Transaction {
@@ -20,7 +19,6 @@ impl Transaction {
         Self { tx: None }
     }
 
-    // Build a transfer transaction
     pub fn build_transfer(
         &mut self,
         from_pubkey: &str,
@@ -46,7 +44,6 @@ impl Transaction {
         Ok(())
     }
 
-    // Build an SPL token transfer transaction
     pub fn build_token_transfer(
         &mut self,
         token_program_id: &str,
@@ -76,17 +73,14 @@ impl Transaction {
         let owner = Pubkey::from_str(owner_pubkey)
             .map_err(|e| SolanaUnityError::InvalidInput(format!("Invalid owner pubkey: {}", e)))?;
 
-        // Create transfer instruction
-        // spl_token::instruction::transfer requires spl_token dependency, here we'll create proper instruction data
-        // Transfer instruction has index 3 and amount as u64 LE bytes
         let mut data = Vec::with_capacity(9);
-        data.push(3); // Transfer instruction index
-        data.extend_from_slice(&amount.to_le_bytes()); // Amount as 8-byte LE
+        data.push(3);
+        data.extend_from_slice(&amount.to_le_bytes());
 
         let accounts = vec![
-            (source_pubkey, false, true),      // source
-            (destination_pubkey, false, true), // destination
-            (owner_pubkey, true, false),       // owner
+            (source_pubkey.to_string(), false, true),
+            (destination_pubkey.to_string(), false, true),
+            (owner_pubkey.to_string(), true, false),
         ];
 
         self.build_program_call(
@@ -98,11 +92,10 @@ impl Transaction {
         )
     }
 
-    // Build a transaction to call a program
     pub fn build_program_call(
         &mut self,
         program_id: &str,
-        accounts: Vec<(&str, bool, bool)>, // pubkey, is_signer, is_writable
+        accounts: Vec<(String, bool, bool)>,
         data: Vec<u8>,
         recent_blockhash: &str,
         fee_payer: &str,
@@ -115,7 +108,7 @@ impl Transaction {
 
         let mut account_metas = Vec::new();
         for (pubkey_str, is_signer, is_writable) in accounts {
-            let pubkey = Pubkey::from_str(pubkey_str).map_err(|e| {
+            let pubkey = Pubkey::from_str(&pubkey_str).map_err(|e| {
                 SolanaUnityError::InvalidInput(format!("Invalid account pubkey: {}", e))
             })?;
 
@@ -142,7 +135,25 @@ impl Transaction {
         Ok(())
     }
 
-    // Sign transaction with a keypair
+    pub fn build_with_instructions(
+        &mut self,
+        instructions: &[Instruction],
+        fee_payer: &str,
+        recent_blockhash: &str,
+    ) -> Result<(), SolanaUnityError> {
+        let fee_payer_pubkey = Pubkey::from_str(fee_payer)
+            .map_err(|e| SolanaUnityError::InvalidInput(format!("Invalid fee payer: {}", e)))?;
+
+        let blockhash = Hash::from_str(recent_blockhash)
+            .map_err(|e| SolanaUnityError::InvalidInput(format!("Invalid blockhash: {}", e)))?;
+
+        let message = Message::new(instructions, Some(&fee_payer_pubkey));
+        let tx = SolanaTransaction::new_unsigned(message);
+
+        self.tx = Some(tx);
+        Ok(())
+    }
+
     pub fn sign(&mut self, private_key: &[u8]) -> Result<(), SolanaUnityError> {
         let keypair = match Keypair::from_bytes(private_key) {
             Ok(kp) => kp,
@@ -167,7 +178,37 @@ impl Transaction {
         Ok(())
     }
 
-    // Get the serialized transaction for sending
+    pub fn sign_with_keypairs(&mut self, private_keys: &[&[u8]]) -> Result<(), SolanaUnityError> {
+        let mut keypairs = Vec::with_capacity(private_keys.len());
+
+        for key in private_keys {
+            let keypair = match Keypair::from_bytes(key) {
+                Ok(kp) => kp,
+                Err(e) => {
+                    return Err(SolanaUnityError::WalletError(format!(
+                        "Invalid keypair: {}",
+                        e
+                    )));
+                }
+            };
+            keypairs.push(keypair);
+        }
+
+        let keypair_refs: Vec<&Keypair> = keypairs.iter().collect();
+
+        let mut tx = self.tx.take().ok_or_else(|| {
+            SolanaUnityError::TransactionError("No transaction to sign".to_string())
+        })?;
+
+        tx.try_sign(&keypair_refs, tx.message.recent_blockhash)
+            .map_err(|e| {
+                SolanaUnityError::TransactionError(format!("Failed to sign transaction: {}", e))
+            })?;
+
+        self.tx = Some(tx);
+        Ok(())
+    }
+
     pub fn serialize(&self) -> Result<Vec<u8>, SolanaUnityError> {
         let tx = self.tx.as_ref().ok_or_else(|| {
             SolanaUnityError::TransactionError("No transaction to serialize".to_string())
@@ -178,7 +219,6 @@ impl Transaction {
         })
     }
 
-    // Get the transaction from serialized bytes
     pub fn from_serialized(&mut self, data: &[u8]) -> Result<(), SolanaUnityError> {
         let tx: SolanaTransaction = bincode::deserialize(data).map_err(|e| {
             SolanaUnityError::SerializationError(format!(
@@ -191,11 +231,19 @@ impl Transaction {
         Ok(())
     }
 
-    // Get transaction as a Solana transaction
     pub fn get_transaction(&self) -> Result<&SolanaTransaction, SolanaUnityError> {
         self.tx.as_ref().ok_or_else(|| {
             SolanaUnityError::TransactionError("No transaction available".to_string())
         })
+    }
+
+    pub fn get_fee_estimate(&self) -> Result<u64, SolanaUnityError> {
+        let tx = self.tx.as_ref().ok_or_else(|| {
+            SolanaUnityError::TransactionError("No transaction available".to_string())
+        })?;
+
+        let signature_count = tx.signatures.len() as u64;
+        Ok(signature_count * 5000)
     }
 }
 
@@ -223,7 +271,6 @@ mod tests {
         assert!(result.is_ok());
         assert!(tx.get_transaction().is_ok());
 
-        // Check that the transaction has the right structure
         let tx_obj = tx.get_transaction().unwrap();
         println!(
             "test_build_transfer signatures: {}",
@@ -234,7 +281,6 @@ mod tests {
             tx_obj.message.instructions.len()
         );
 
-        // With newer Solana versions, signatures might be pre-allocated
         assert!(tx_obj.signatures.len() <= 1);
         assert!(tx_obj.message.instructions.len() > 0);
     }
@@ -248,7 +294,6 @@ mod tests {
         let owner_pubkey = from.pubkey().to_string();
         let blockhash = Hash::default().to_string();
 
-        // Empty string should use default token program
         let result = tx.build_token_transfer(
             "",
             &from_pubkey,
@@ -260,7 +305,6 @@ mod tests {
         assert!(result.is_ok());
         assert!(tx.get_transaction().is_ok());
 
-        // Check that the transaction has the right structure
         let tx_obj = tx.get_transaction().unwrap();
         println!(
             "test_build_token_transfer signatures: {}",
@@ -280,11 +324,9 @@ mod tests {
             );
         }
 
-        // With newer Solana versions, signatures might be pre-allocated
         assert!(tx_obj.signatures.len() <= 1);
         assert!(tx_obj.message.instructions.len() > 0);
 
-        // Find the token transfer instruction (should be there)
         let has_transfer_inst = tx_obj
             .message
             .instructions
@@ -305,13 +347,11 @@ mod tests {
         let account2 = Keypair::new().pubkey().to_string();
         let blockhash = Hash::default().to_string();
 
-        // Create accounts vector
         let accounts = vec![
-            (&account1 as &str, true, false),
-            (&account2 as &str, false, true),
+            (account1.to_string(), true, false),
+            (account2.to_string(), false, true),
         ];
 
-        // Create instruction data
         let data = vec![0, 1, 2, 3];
 
         let result =
@@ -319,7 +359,6 @@ mod tests {
         assert!(result.is_ok());
         assert!(tx.get_transaction().is_ok());
 
-        // Check that the transaction has the right structure
         let tx_obj = tx.get_transaction().unwrap();
         println!(
             "test_build_program_call signatures: {}",
@@ -339,11 +378,9 @@ mod tests {
             );
         }
 
-        // With newer Solana versions, signatures might be pre-allocated
         assert!(tx_obj.signatures.len() <= 2);
         assert!(tx_obj.message.instructions.len() > 0);
 
-        // Find the instruction with our custom data
         let has_inst_with_data = tx_obj
             .message
             .instructions
@@ -377,18 +414,20 @@ mod tests {
         assert!(result.is_ok());
         assert!(new_tx.get_transaction().is_ok());
 
-        // The serialized and deserialized transactions should match
         let original_tx = tx.get_transaction().unwrap();
         let deserialized_tx = new_tx.get_transaction().unwrap();
 
         assert_eq!(
-            original_tx.message.recent_blockhash,
-            deserialized_tx.message.recent_blockhash
+            original_tx.signatures, deserialized_tx.signatures,
+            "Signatures don't match after serialization/deserialization"
         );
+
         assert_eq!(
-            original_tx.message.instructions.len(),
-            deserialized_tx.message.instructions.len()
+            original_tx.message.recent_blockhash, deserialized_tx.message.recent_blockhash,
+            "Blockhashes don't match after serialization/deserialization"
         );
+
+        println!("Successfully serialized and deserialized a real transaction");
     }
 
     #[test]
@@ -399,15 +438,12 @@ mod tests {
         let to_pubkey = Keypair::new().pubkey().to_string();
         let blockhash = Hash::default().to_string();
 
-        // Build a transfer transaction
         tx.build_transfer(&from_pubkey, &to_pubkey, 1000, &blockhash)
             .unwrap();
 
-        // Sign it
         let result = tx.sign(&keypair.to_bytes());
         assert!(result.is_ok());
 
-        // Check that it's signed
         let tx_obj = tx.get_transaction().unwrap();
         assert_eq!(tx_obj.signatures.len(), 1);
         assert_ne!(
@@ -427,17 +463,16 @@ mod tests {
         assert!(result.is_err());
 
         match result {
-            Err(SolanaUnityError::InvalidInput(_)) => {} // Expected
+            Err(SolanaUnityError::InvalidInput(_)) => {}
             _ => panic!("Expected InvalidInput error for invalid pubkey"),
         }
 
-        // Also test invalid recipient
         let from_pubkey = Keypair::new().pubkey().to_string();
         let result = tx.build_transfer(&from_pubkey, invalid_pubkey, 1000, &blockhash);
         assert!(result.is_err());
 
         match result {
-            Err(SolanaUnityError::InvalidInput(_)) => {} // Expected
+            Err(SolanaUnityError::InvalidInput(_)) => {}
             _ => panic!("Expected InvalidInput error for invalid pubkey"),
         }
     }
@@ -448,13 +483,12 @@ mod tests {
         let from_pubkey = Keypair::new().pubkey().to_string();
         let to_pubkey = Keypair::new().pubkey().to_string();
 
-        // Test with invalid blockhash
         let invalid_blockhash = "not-a-valid-blockhash";
         let result = tx.build_transfer(&from_pubkey, &to_pubkey, 1000, invalid_blockhash);
         assert!(result.is_err());
 
         match result {
-            Err(SolanaUnityError::InvalidInput(_)) => {} // Expected
+            Err(SolanaUnityError::InvalidInput(_)) => {}
             _ => panic!("Expected InvalidInput error for invalid blockhash"),
         }
     }
@@ -467,27 +501,147 @@ mod tests {
         let to_pubkey = Keypair::new().pubkey().to_string();
         let blockhash = Hash::default().to_string();
 
-        // Try to sign without building a transaction
         let result = tx.sign(&keypair.to_bytes());
         assert!(result.is_err());
 
         match result {
-            Err(SolanaUnityError::TransactionError(_)) => {} // Expected
+            Err(SolanaUnityError::TransactionError(_)) => {}
             _ => panic!("Expected TransactionError when signing empty transaction"),
         }
 
-        // Build transaction
         tx.build_transfer(&from_pubkey, &to_pubkey, 1000, &blockhash)
             .unwrap();
 
-        // Try to sign with invalid keypair
-        let invalid_keypair = vec![0; 32]; // Wrong length
+        let invalid_keypair = vec![0; 32];
         let result = tx.sign(&invalid_keypair);
         assert!(result.is_err());
 
         match result {
-            Err(SolanaUnityError::WalletError(_)) => {} // Expected
+            Err(SolanaUnityError::WalletError(_)) => {}
             _ => panic!("Expected WalletError when signing with invalid keypair"),
         }
+    }
+
+    #[test]
+    fn test_real_transaction_build_and_sign() {
+        let url = "https://api.devnet.solana.com";
+        let rpc_client = solana_client::rpc_client::RpcClient::new(url.to_string());
+
+        let blockhash_result = rpc_client.get_latest_blockhash();
+        assert!(
+            blockhash_result.is_ok(),
+            "Failed to get blockhash from devnet"
+        );
+        let blockhash = blockhash_result.unwrap().to_string();
+        println!("Got real blockhash: {}", blockhash);
+
+        let mut tx = Transaction::new();
+
+        let from_keypair = Keypair::new();
+        let from_pubkey = from_keypair.pubkey().to_string();
+        let to_pubkey = Keypair::new().pubkey().to_string();
+        let lamports = 1000;
+
+        let result = tx.build_transfer(&from_pubkey, &to_pubkey, lamports, &blockhash);
+        assert!(
+            result.is_ok(),
+            "Failed to build transfer with real blockhash"
+        );
+
+        let private_key = from_keypair.to_bytes();
+        let sign_result = tx.sign(&private_key);
+        assert!(sign_result.is_ok(), "Failed to sign transaction");
+
+        let tx_obj = tx.get_transaction().unwrap();
+        assert_eq!(tx_obj.message.header.num_required_signatures, 1);
+
+        let signature = tx_obj.signatures[0];
+        assert_ne!(
+            signature,
+            solana_sdk::signature::Signature::default(),
+            "Signature is empty"
+        );
+
+        println!("Successfully built and signed a real transaction");
+    }
+
+    #[test]
+    fn test_real_token_transfer_build() {
+        let url = "https://api.devnet.solana.com";
+        let rpc_client = solana_client::rpc_client::RpcClient::new(url.to_string());
+
+        let blockhash = rpc_client.get_latest_blockhash().unwrap().to_string();
+
+        let mut tx = Transaction::new();
+
+        let from_keypair = Keypair::new();
+        let from_pubkey = from_keypair.pubkey().to_string();
+        let to_pubkey = Keypair::new().pubkey().to_string();
+        let amount = 1000;
+
+        let owner_pubkey = from_pubkey.clone();
+
+        let result = tx.build_token_transfer(
+            "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            &from_pubkey,
+            &to_pubkey,
+            &owner_pubkey,
+            amount,
+            &blockhash,
+        );
+
+        println!("Token transfer build result: {:?}", result);
+        assert!(result.is_ok(), "Failed to build token transfer transaction");
+
+        println!("Successfully built a token transfer transaction");
+    }
+
+    #[test]
+    fn test_transaction_serialize_deserialize() {
+        let url = "https://api.devnet.solana.com";
+        let rpc_client = solana_client::rpc_client::RpcClient::new(url.to_string());
+
+        let blockhash = rpc_client.get_latest_blockhash().unwrap().to_string();
+
+        let mut tx = Transaction::new();
+
+        let from_keypair = Keypair::new();
+        let from_pubkey = from_keypair.pubkey().to_string();
+        let to_pubkey = Keypair::new().pubkey().to_string();
+        let lamports = 1000;
+
+        tx.build_transfer(&from_pubkey, &to_pubkey, lamports, &blockhash)
+            .unwrap();
+
+        let private_key = from_keypair.to_bytes();
+        tx.sign(&private_key).unwrap();
+
+        let serialized = tx.serialize();
+        assert!(serialized.is_ok(), "Failed to serialize transaction");
+
+        let serialized_data = serialized.unwrap();
+        assert!(
+            !serialized_data.is_empty(),
+            "Serialized transaction is empty"
+        );
+
+        let mut new_tx = Transaction::new();
+        let result = new_tx.from_serialized(&serialized_data);
+        assert!(result.is_ok(), "Failed to deserialize transaction");
+
+        let original_tx = tx.get_transaction().unwrap();
+        let deserialized_tx = new_tx.get_transaction().unwrap();
+
+        assert_eq!(
+            original_tx.signatures, deserialized_tx.signatures,
+            "Signatures don't match after serialization/deserialization"
+        );
+
+        assert_eq!(
+            original_tx.message.recent_blockhash, deserialized_tx.message.recent_blockhash,
+            "Blockhashes don't match after serialization/deserialization"
+        );
+
+        println!("Successfully serialized and deserialized a real transaction");
     }
 }

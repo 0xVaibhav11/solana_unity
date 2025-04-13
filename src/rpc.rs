@@ -172,13 +172,67 @@ impl RpcClient {
 
         Ok(json)
     }
+
+    // Add transaction simulation method
+    pub fn simulate_transaction(
+        &self,
+        transaction: &SolanaTransaction,
+    ) -> Result<String, SolanaUnityError> {
+        let config = solana_client::rpc_config::RpcSimulateTransactionConfig {
+            sig_verify: false,
+            replace_recent_blockhash: false,
+            commitment: Some(self.commitment),
+            encoding: Some(solana_transaction_status::UiTransactionEncoding::Json),
+            accounts: None,
+            min_context_slot: None,
+            inner_instructions: true,
+        };
+
+        let result = self
+            .client
+            .simulate_transaction_with_config(transaction, config)
+            .map_err(|e| SolanaUnityError::RpcError(format!("Simulation failed: {}", e)))?;
+
+        // Convert to JSON
+        let json = serde_json::to_string(&result).map_err(|e| {
+            SolanaUnityError::SerializationError(format!(
+                "Failed to serialize simulation result: {}",
+                e
+            ))
+        })?;
+
+        Ok(json)
+    }
+
+    // Add method to get multiple accounts
+    pub fn get_multiple_accounts(&self, pubkeys: &[&str]) -> Result<String, SolanaUnityError> {
+        // Convert pubkey strings to Pubkey objects
+        let mut pubkey_objects = Vec::with_capacity(pubkeys.len());
+        for pubkey_str in pubkeys {
+            let pubkey = solana_sdk::pubkey::Pubkey::from_str(pubkey_str)
+                .map_err(|e| SolanaUnityError::InvalidInput(format!("Invalid pubkey: {}", e)))?;
+            pubkey_objects.push(pubkey);
+        }
+
+        // Get accounts
+        let accounts = self
+            .client
+            .get_multiple_accounts(&pubkey_objects)
+            .map_err(|e| SolanaUnityError::RpcError(format!("Failed to get accounts: {}", e)))?;
+
+        // Convert to JSON
+        let json = serde_json::to_string(&accounts).map_err(|e| {
+            SolanaUnityError::SerializationError(format!("Failed to serialize accounts: {}", e))
+        })?;
+
+        Ok(json)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use solana_sdk::pubkey::Pubkey;
-    
 
     // For more comprehensive tests, we should use mockall
     // Let's create a set of tests that don't require network connectivity
@@ -324,9 +378,7 @@ mod tests {
         }
     }
 
-    // The following tests would need a real connection or a mock
-    // They are included as a reference for how to structure real tests with network calls
-    #[ignore]
+    // Real network connectivity tests
     #[test]
     fn test_get_balance_with_connection() {
         let url = "https://api.devnet.solana.com";
@@ -340,9 +392,9 @@ mod tests {
 
         let balance = result.unwrap();
         assert!(balance >= 0); // Balance should be non-negative
+        println!("Account balance: {} lamports", balance);
     }
 
-    #[ignore]
     #[test]
     fn test_get_latest_blockhash_with_connection() {
         let url = "https://api.devnet.solana.com";
@@ -353,8 +405,62 @@ mod tests {
 
         let blockhash = result.unwrap();
         assert!(!blockhash.is_empty());
+        println!("Latest blockhash: {}", blockhash);
 
         // Blockhash should be 32 bytes encoded as base58, typically around 44 chars
         assert!(blockhash.len() >= 32);
+    }
+
+    #[test]
+    fn test_get_account_info_with_connection() {
+        let url = "https://api.devnet.solana.com";
+        let client = RpcClient::new(url, "confirmed").unwrap();
+
+        // Solana token program is a well-known account that should always exist
+        let token_program = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+
+        let result = client.get_account_info(token_program);
+        assert!(result.is_ok());
+
+        let account_info = result.unwrap();
+        assert!(!account_info.is_empty());
+
+        // Verify it's valid JSON
+        let json_result = serde_json::from_str::<serde_json::Value>(&account_info);
+        assert!(json_result.is_ok());
+
+        println!("Account info retrieved successfully");
+    }
+
+    #[test]
+    fn test_get_program_accounts_with_connection() {
+        let url = "https://api.devnet.solana.com";
+        let client = RpcClient::new(url, "confirmed").unwrap();
+
+        // System program is a well-known program that should always exist and have accounts
+        let system_program = "11111111111111111111111111111111";
+
+        let result = client.get_program_accounts(system_program);
+
+        // This might be slow and return a lot of accounts, so we'll accept either:
+        // - Success (some accounts found)
+        // - RPC error due to timeout or response too large
+        match result {
+            Ok(accounts_json) => {
+                assert!(!accounts_json.is_empty());
+                println!("Program accounts retrieved successfully");
+            }
+            Err(e) => {
+                println!(
+                    "Note: System program has too many accounts, expected error: {}",
+                    e
+                );
+                // This is acceptable - system program has millions of accounts
+                match e {
+                    SolanaUnityError::RpcError(_) => {} // Expected
+                    _ => panic!("Unexpected error type: {:?}", e),
+                }
+            }
+        }
     }
 }
